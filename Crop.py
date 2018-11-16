@@ -7,10 +7,9 @@ import operator
 import pytesseract
 
 diretorio = 'Images/extracted/'           # Images Directory
-files = glob.glob(diretorio+'*.jpg');     # Put all images into a list
+#files = glob.glob(diretorio+'*.jpg');     # Put all images into a list
 
-plate = diretorio+'1_extracted.jpg'       # Name of the current image being processed
-templateM = cv2.imread('Images/digit2/M.jpg')
+plate = diretorio+'12_extracted.jpg'       # Name of the current image being processed
 img = cv2.imread(plate)
 img_grayscale = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)        # Turn plate image into grayscale
 
@@ -98,7 +97,7 @@ fig,ax = plt.subplots(1)
 
 crop_list = [];
 
-#print(valley_position_hor)
+# HORIZONTAL CROP
 pos = len(valley_position_hor)-1
 
 if(len(valley_position_hor) < 1):
@@ -120,43 +119,44 @@ while(diff_vert < 20):
         start_h = valley_position_hor[0]
         diff_vert = len(img) - start_h
 
-# Insert crops between valleys
-for i in range(0, len(valley_position_vert)-1):
 
-    diff_hor = valley_position_vert[i+1] - valley_position_vert[i]
-    # Always put a square between valleys
-    rect = patches.Rectangle((valley_position_vert[i], start_h),diff_hor,diff_vert,linewidth=2,edgecolor='r',facecolor='none')
-    ax.add_patch(rect)  # Add rectangle to image
+# VERTICAL CROP
 
-    # Crop image and add to a list
-    crop_image = img[start_h:start_h+diff_vert, valley_position_vert[i]:valley_position_vert[i] + diff_hor]
-    crop_list.append(crop_image)
+if(len(img[0]) - valley_position_vert[len(valley_position_vert)-1] < 15):
+    diff_hor = valley_position_vert[len(valley_position_vert)-1] - valley_position_vert[0]
+    #end_vert = valley_position_vert[len(valley_position_vert)-1]
+else:
+    #end_vert = len(img[0])
+    diff_hor = len(img[0]) - valley_position_vert[0]
 
-    if(diff_hor < 11 and i < len(valley_position_vert)-1):
-        # If diff_hor don't correspond to a valid space between valley, put another square
-        diff_hor = valley_position_vert[i+2] - valley_position_vert[i]
-        rect = patches.Rectangle((valley_position_vert[i], start_h),diff_hor,diff_vert,linewidth=2,edgecolor='r',facecolor='none')
-        ax.add_patch(rect)  # ADD rectangle to image
+rect = patches.Rectangle((valley_position_vert[0], start_h),diff_hor,diff_vert,linewidth=2,edgecolor='r',facecolor='none')
+ax.add_patch(rect)  # Add rectangle to image
 
-        crop_image = img[start_h:start_h+diff_vert, valley_position_vert[i]:valley_position_vert[i] + diff_hor]
-        crop_list.append(crop_image)
-
-diff_hor = len(img[0]) - valley_position_vert[len(valley_position_vert)-1]
-rectF = patches.Rectangle((valley_position_vert[len(valley_position_vert)-1], start_h),diff_hor,diff_vert,linewidth=2,edgecolor='r',facecolor='none')
-ax.add_patch(rectF)
-crop_image = img[start_h:start_h+diff_vert, valley_position_vert[i]:valley_position_vert[i] + diff_hor]
-crop_list.append(crop_image)
-
+crop_image = im_bw[start_h:start_h+diff_vert, valley_position_vert[0]:valley_position_vert[0] + diff_hor]
+#crop_list.append(crop_image)
 
 #ax.imshow(img)                  # Show plate
+resized_image = cv2.resize(crop_image, (450, 150))
+plt.figure(1)
+plt.imshow(img)
 
-#plt.figure(2)
-#plt.imshow(crop_list[0])
-#plt.show()
+#print(crop_image[10])
 
-######################################### MATCH TEMPLATE ########################################################
-resized_image = cv2.resize(crop_list[0], (19, 32))
-print(templateM)
-result = cv2.matchTemplate(crop_list[0], templateM, cv2.TM_CCOEFF)
-print(result)
+#for j in range(0, len(crop_image[0])):
+#    for i in range(0, len(crop_image)):
+#        if(crop_image[i][j] == 2):
+#            crop_image[i][j] = 0
+#        else:
+#            crop_image[i][j] = 255
+
+(thresh, crop_image) = cv2.threshold(crop_image, 128, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU) # Binarization
+
+plt.figure(2)
+plt.imshow(crop_image, cmap='gray')
+plt.show()
+
+######################################### TEMPLATE MATCHING ########################################################
+config = ("-l eng --oem 1 --psm 7")
+text = pytesseract.image_to_string(crop_image, config=config)
+print(text)
 
